@@ -1,0 +1,40 @@
+                         LOCKLAB
+
+┌──────────────────────────────────────────┐
+│                 BROWSER                  │
+│                                          │
+│   Tab A       Tab B       Tab C          │
+│     │           │           │            │
+│   xterm       xterm       xterm          │
+└─────┼───────────┼───────────┼────────────┘
+      └───────────┼───────────┘
+                  │
+              WebSocket
+                  │
+                  ▼
+          ┌───────────────┐
+          │     BRIDGE    │
+          │               │
+          │ message relay │
+          └───────┬───────┘
+                  │
+             Secure Tunnel
+                  │
+                  ▼
+          ┌───────────────┐
+          │   CONNECTOR   │
+          │               │
+          │ psql A         │
+          │ psql B         │
+          │ psql C         │
+          │               │
+          │ Lock Watcher   │
+          └───────┬───────┘
+                  │
+             localhost
+                  │
+                  ▼
+          ┌───────────────┐
+          │  PostgreSQL   │
+          │    Docker     │
+          └───────────────┘
