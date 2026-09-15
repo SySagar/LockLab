@@ -2,6 +2,92 @@
 
 ## 1. Purpose
 
+## 1.1 Human-in-the-loop implementation policy
+
+AI is an assistant for this project, not the implementer.
+
+Rules:
+- Human developers own the final decisions.
+- AI may suggest commands, boilerplate, small snippets, and inline completions.
+- AI should not directly write the implementation for protocol logic, DB/session lifecycle, or PostgreSQL process management without human approval.
+- Autocomplete and tab completion are allowed only as speed aids.
+- Anything that changes behavior must be reviewed and accepted manually before being kept.
+
+## 1.2 Test-driven development requirement
+
+All implementation work in this project must follow TDD.
+
+Required workflow:
+- write the smallest failing test or smoke validation before implementation
+- implement only the code needed to satisfy the test
+- validate the relevant behavior with the smallest command that checks it
+- only then move to the next step or feature
+
+This applies to protocol, bridge logic, connector logic, terminal lifecycle, lock state handling, and database initialization.
+
+Examples:
+- a protocol unit test that asserts the canonical message constants
+- a smoke test that verifies the bridge forwards a message without changing its payload
+- a connector test that ensures a rejected terminal create yields the correct machine-readable error code
+
+No feature is considered complete without the required failing-then-passing validation.
+
+## 1.3 Required human execution workflow
+
+The project must not be modified automatically by AI on the basis of generic guidance alone.
+
+Required workflow:
+- AI must propose explicit implementation steps with commands, file targets, and verification commands.
+- Human reviewers must approve each step before files are created or edited.
+- AI must not apply code or config changes automatically after generating a plan.
+- Any task that changes runtime behavior, protocol contracts, database handling, or process lifecycle requires explicit human confirmation before persistence.
+
+Examples of required command-level detail:
+
+```bash
+mkdir -p packages/protocol
+cat > packages/protocol/package.json <<'EOF'
+{
+  "name": "@locklab/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module"
+}
+EOF
+npm init -y
+npm install --save-dev typescript
+```
+
+```bash
+mkdir -p backend/bridge backend/connector apps/web
+python -m venv .venv
+source .venv/bin/activate
+pip install django djangorestframework channels
+```
+
+These examples are intentionally explicit. The implementation must be step-specific, not vague. A phase is not considered actionable until the task includes:
+- exact command(s)
+- target file(s) or directory(s)
+- expected outcome
+- verification command(s)
+
+## 1.3 No auto-apply rule
+
+AI must not make file edits, project scaffolding, dependency changes, or runtime logic changes unless the human explicitly asks it to do so after reviewing the exact steps.
+
+This includes:
+- creating package manifests
+- installing dependencies
+- creating folders or files
+- editing protocol schemas
+- changing Django settings
+- creating bridge/connector startup code
+- modifying PostgreSQL session or psql lifecycle logic
+
+The AI may present a draft plan and commands, but it must wait for explicit permission before making changes to the repository.
+
+---
+
 This specification defines communication between the LockLab components:
 
 ```text
