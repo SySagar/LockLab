@@ -27,6 +27,12 @@ Standard operating procedure for every phase:
 6. Only after verification do we move to the next step.
 7. Every new behavior must have a failing test before implementation and a passing test after implementation.
 
+Output style rule for implementation guidance:
+- AI must keep implementation guidance at the phase and command level.
+- AI must not dump large implementation code blocks in chat when the user is expected to copy and paste commands manually.
+- The human is the final implementer; the chat output should give the next exact step(s) to run, not a full code walkthrough.
+- If a phase needs more detail, it should be a short checklist and explicit commands, not verbose code reproduction.
+
 This doc is intentionally written as a command-by-command checklist so the same pattern can be reused across phases without repeating the approval process.
 
 ---
@@ -145,212 +151,18 @@ Why: this creates the canonical location for the shared contract and generated r
 
 Step 2: create the package manifest
 
-```bash
-cd /home/sagar/work/LockLab
-cat > packages/protocol/package.json <<'EOF'
-{
-  "name": "@locklab/protocol",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./src/index.js",
-    "./messages": "./src/index.js"
-  },
-  "scripts": {
-    "validate": "node --check src/index.js"
-  }
-}
-EOF
-```
-
 Why: the protocol package becomes the shared source of the message contract and the validation entry point.
 
 Step 3: create the base JSON schema envelope
-
-```bash
-cd /home/sagar/work/LockLab
-cat > packages/protocol/schema/messages.json <<'EOF'
-{
-  "$id": "https://locklab.local/schemas/messages.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "LockLab Messages",
-  "type": "object",
-  "properties": {
-    "type": {
-      "type": "string",
-      "description": "Canonical message type identifier"
-    },
-    "requestId": {
-      "type": "string",
-      "description": "Correlation identifier for request/response pairs"
-    },
-    "payload": {
-      "description": "Message-specific payload"
-    }
-  },
-  "required": ["type"],
-  "additionalProperties": true
-}
-EOF
-```
 
 Why: this is the canonical envelope all protocol traffic must follow.
 
 Step 4: create the human-readable protocol documentation
 
-```bash
-cd /home/sagar/work/LockLab
-cat > packages/protocol/README.md <<'EOF'
-# LockLab Protocol
-
-## Core rule
-- Browser never connects directly to PostgreSQL.
-- Bridge only relays WebSocket messages.
-- Connector is the only component that creates `psql` processes and interacts with PostgreSQL.
-
-## Base envelope
-```ts
-type Message = {
-  type: string;
-  requestId?: string;
-  payload?: unknown;
-};
-```
-
-## Canonical message types
-
-### Browser -> Connector
-- `terminal.create`
-- `terminal.input`
-- `terminal.close`
-- `database.initialize`
-
-### Connector -> Browser
-- `connector.registered`
-- `postgres.status`
-- `terminal.created`
-- `terminal.output`
-- `terminal.closed`
-- `terminal.exit`
-- `lock.state`
-- `database.initialize.complete`
-- `error`
-
-## Canonical error codes
-- `TERMINAL_CREATE_FAILED`
-- `TERMINAL_WRITE_FAILED`
-- `TERMINAL_EXIT_UNEXPECTED`
-- `POSTGRES_UNREACHABLE`
-- `POSTGRES_AUTH_FAILED`
-- `MAX_SESSIONS_EXCEEDED`
-- `LOCK_WATCHER_ERROR`
-- `DATABASE_INIT_FAILED`
-- `DATABASE_RESET_NOT_ALLOWED`
-- `CONNECTOR_DISCONNECTED`
-- `UNEXPECTED_ERROR`
-```
-EOF
-```
-
 Why: humans need a readable contract as well as the JSON schema; this prevents protocol drift between browser and connector.
 
 Step 5: create the runtime message constants and helpers
 
-```bash
-cd /home/sagar/work/LockLab
-cat > packages/protocol/src/index.js <<'EOF'
-export const MESSAGE_TYPES = Object.freeze({
-  CONNECTOR_REGISTER: 'connector.register',
-  CONNECTOR_REGISTERED: 'connector.registered',
-  POSTGRES_STATUS: 'postgres.status',
-  TERMINAL_CREATE: 'terminal.create',
-  TERMINAL_CREATED: 'terminal.created',
-  TERMINAL_INPUT: 'terminal.input',
-  TERMINAL_OUTPUT: 'terminal.output',
-  TERMINAL_CLOSE: 'terminal.close',
-  TERMINAL_CLOSED: 'terminal.closed',
-  TERMINAL_EXIT: 'terminal.exit',
-  LOCK_STATE: 'lock.state',
-  DATABASE_INITIALIZE: 'database.initialize',
-  DATABASE_INITIALIZE_COMPLETE: 'database.initialize.complete',
-  ERROR: 'error'
-});
-
-export const ERROR_CODES = Object.freeze({
-  TERMINAL_CREATE_FAILED: 'TERMINAL_CREATE_FAILED',
-  TERMINAL_WRITE_FAILED: 'TERMINAL_WRITE_FAILED',
-  TERMINAL_EXIT_UNEXPECTED: 'TERMINAL_EXIT_UNEXPECTED',
-  POSTGRES_UNREACHABLE: 'POSTGRES_UNREACHABLE',
-  POSTGRES_AUTH_FAILED: 'POSTGRES_AUTH_FAILED',
-  MAX_SESSIONS_EXCEEDED: 'MAX_SESSIONS_EXCEEDED',
-  LOCK_WATCHER_ERROR: 'LOCK_WATCHER_ERROR',
-  DATABASE_INIT_FAILED: 'DATABASE_INIT_FAILED',
-  DATABASE_RESET_NOT_ALLOWED: 'DATABASE_RESET_NOT_ALLOWED',
-  CONNECTOR_DISCONNECTED: 'CONNECTOR_DISCONNECTED',
-  UNEXPECTED_ERROR: 'UNEXPECTED_ERROR'
-});
-
-export function isMessageEnvelope(value) {
-  return Boolean(value && typeof value === 'object' && typeof value.type === 'string');
-}
-
-export function createErrorMessage({ code = ERROR_CODES.UNEXPECTED_ERROR, message = 'Unexpected error', requestId, details } = {}) {
-  return {
-    type: MESSAGE_TYPES.ERROR,
-    ...(requestId ? { requestId } : {}),
-    payload: {
-      code,
-      message,
-      ...(details !== undefined ? { details } : {})
-    }
-  };
-}
-
-export function createTerminalCreatedMessage({ requestId, sessionId }) {
-  return {
-    type: MESSAGE_TYPES.TERMINAL_CREATED,
-    ...(requestId ? { requestId } : {}),
-    payload: { sessionId }
-  };
-}
-
-export function createTerminalOutputMessage({ sessionId, data }) {
-  return {
-    type: MESSAGE_TYPES.TERMINAL_OUTPUT,
-    payload: { sessionId, data }
-  };
-}
-
-export function createPostgresStatusMessage(status, details) {
-  return {
-    type: MESSAGE_TYPES.POSTGRES_STATUS,
-    payload: {
-      status,
-      ...(details !== undefined ? { details } : {})
-    }
-  };
-}
-
-export function createLockStateMessage(lockState) {
-  return {
-    type: MESSAGE_TYPES.LOCK_STATE,
-    payload: lockState
-  };
-}
-
-export default {
-  MESSAGE_TYPES,
-  ERROR_CODES,
-  isMessageEnvelope,
-  createErrorMessage,
-  createTerminalCreatedMessage,
-  createTerminalOutputMessage,
-  createPostgresStatusMessage,
-  createLockStateMessage
-};
-EOF
-```
 
 Why: this keeps the shared contract usable in both Node/TypeScript and browser-side code without drift.
 
