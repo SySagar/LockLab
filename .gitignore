@@ -1,1 +1,5 @@
 IMPLEMENTATION-PLAN.MD
+.vitest/
+node_modules
+package-lock.json
+05-test.md

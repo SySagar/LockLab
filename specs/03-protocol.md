@@ -2,6 +2,8 @@
 
 ## 1. Purpose
 
+This protocol is intentionally defined in TypeScript for the shared package boundary and is treated as the canonical contract for browser, bridge, and connector code. The implementation uses typed message envelopes so message names, payload shapes, and error codes stay consistent across languages and services.
+
 ## 1.1 Human-in-the-loop implementation policy
 
 AI is an assistant for this project, not the implementer.
@@ -169,12 +171,21 @@ All application messages use JSON.
 Base structure:
 
 ```ts
-type Message = {
-  type: string;
+type MessageEnvelope<
+  TType extends MessageType = MessageType,
+  TPayload = ProtocolPayloadMap[TType]
+> = {
+  type: TType;
   requestId?: string;
-  payload?: unknown;
+  version?: string;
+  timestamp?: string;
+  payload: TPayload;
 };
 ```
+
+ `TPayload` is the explicit union of all valid message payloads defined by the protocol contract.
+
+This makes the shared contract strongly typed and keeps browser, bridge, and connector code aligned.
 
 `type` identifies the message.
 

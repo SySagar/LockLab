@@ -41,7 +41,9 @@ The Bridge must not execute SQL.
 
 ## Connector
 
-The Connector runs on the user's machine and is delivered as a Node.js CLI (npm package) that the user installs and runs locally (e.g. `npm install -g locklab-connector`).
+The Connector runs on the user's machine and is delivered as a TypeScript-based Node.js CLI (npm package) that the user installs and runs locally (e.g. `npm install -g locklab-connector`).
+
+The protocol package itself is also TypeScript-first so message contracts, helpers, and tests remain strongly typed across browser, bridge, and connector boundaries.
 
 Responsibilities:
 
